@@ -1,0 +1,70 @@
+#include <stdbool.h>
+
+int row_masks[9];
+int col_masks[9];
+int box_masks[9];
+
+inline int getBoxIndex(int r, int c) {
+    return (r / 3) * 3 + (c / 3);
+}
+
+bool backtrack(char** board, int cellIndex) {
+    if (cellIndex == 81) {
+        return true;
+    }
+
+    int r = cellIndex / 9;
+    int c = cellIndex % 9;
+    int b = getBoxIndex(r, c);
+
+    if (board[r][c] != '.') {
+        return backtrack(board, cellIndex + 1);
+    }
+
+    for (int num = 1; num <= 9; num++) {
+        int mask = 1 << num;
+
+        if (!(row_masks[r] & mask) && !(col_masks[c] & mask) && !(box_masks[b] & mask)) {
+            
+            // Choose: Place the number
+            board[r][c] = num + '0';
+            row_masks[r] |= mask;
+            col_masks[c] |= mask;
+            box_masks[b] |= mask;
+
+            if (backtrack(board, cellIndex + 1)) {
+                return true;
+            }
+
+            board[r][c] = '.';
+            row_masks[r] &= ~mask;
+            col_masks[c] &= ~mask;
+            box_masks[b] &= ~mask;
+        }
+    }
+
+    return false;
+}
+
+void solveSudoku(char** board, int boardSize, int* boardColSize) {
+    for (int i = 0; i < 9; i++) {
+        row_masks[i] = 0;
+        col_masks[i] = 0;
+        box_masks[i] = 0;
+    }
+
+    for (int r = 0; r < 9; r++) {
+        for (int c = 0; c < 9; c++) {
+            if (board[r][c] != '.') {
+                int num = board[r][c] - '0';
+                int mask = 1 << num;
+                int b = getBoxIndex(r, c);
+
+                row_masks[r] |= mask;
+                col_masks[c] |= mask;
+                box_masks[b] |= mask;
+            }
+        }
+    }
+    backtrack(board, 0);
+}
