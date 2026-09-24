@@ -1,0 +1,88 @@
+#include <stdlib.h>
+#include <stdbool.h>
+
+
+int checkPeak(int* nums, int numsSize, int i) {
+    if (i <= 0 || i >= numsSize - 1) return 0;
+    return (nums[i] > nums[i - 1] && nums[i] > nums[i + 1]) ? 1 : 0;
+}
+
+
+void updateBIT(int* bit, int n, int idx, int val) {
+    for (; idx <= n; idx += idx & -idx) {
+        bit[idx] += val;
+    }
+}
+
+int queryBIT(int* bit, int idx) {
+    int sum = 0;
+    for (; idx > 0; idx -= idx & -idx) {
+        sum += bit[idx];
+    }
+    return sum;
+}
+
+int rangeQuery(int* bit, int l, int r) {
+    if (l > r) return 0;
+    return queryBIT(bit, r) - queryBIT(bit, l - 1);
+}
+
+int* countOfPeaks(int* nums, int numsSize, int** queries, int queriesSize, int* queriesColSize, int* returnSize) {
+    int* bit = (int*)calloc(numsSize + 1, sizeof(int));
+    int* is_peak = (int*)calloc(numsSize, sizeof(int));
+    for (int i = 1; i < numsSize - 1; i++) {
+        if (checkPeak(nums, numsSize, i)) {
+            is_peak[i] = 1;
+            updateBIT(bit, numsSize, i + 1, 1); 
+        }
+    }
+
+    int* result = (int*)malloc(queriesSize * sizeof(int));
+    int resultCount = 0;
+
+    for (int i = 0; i < queriesSize; i++) {
+        int type = queries[i][0];
+
+        if (type == 1) {
+            int l = queries[i][1];
+            int r = queries[i][2];
+            if (r - l < 2) {
+                result[resultCount++] = 0;
+            } else {
+                result[resultCount++] = rangeQuery(bit, l + 2, r);
+            }
+        } else if (type == 2) {
+            int index = queries[i][1];
+            int val = queries[i][2];
+
+            if (nums[index] != val) {
+                int start = (index - 1 > 0) ? index - 1 : 1;
+                int end = (index + 1 < numsSize - 1) ? index + 1 : numsSize - 2;
+
+           
+                for (int j = start; j <= end; j++) {
+                    if (is_peak[j]) {
+                        updateBIT(bit, numsSize, j + 1, -1);
+                        is_peak[j] = 0;
+                    }
+                }
+                nums[index] = val;
+
+                for (int j = start; j <= end; j++) {
+                    if (checkPeak(nums, numsSize, j)) {
+                        is_peak[j] = 1;
+                        updateBIT(bit, numsSize, j + 1, 1);
+                    }
+                }
+            }
+        }
+    }
+
+    free(bit);
+    free(is_peak);
+    
+    *returnSize = resultCount;
+    return result;
+}
+
+
