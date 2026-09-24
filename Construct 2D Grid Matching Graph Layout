@@ -1,0 +1,155 @@
+#include <stdlib.h>
+#include <stdbool.h>
+
+typedef struct {
+    int* neighbors;
+    int size;
+    int capacity;
+} AdjList;
+
+void addNeighbor(AdjList* list, int val) {
+    if (list->size == list->capacity) {
+        list->capacity = list->capacity == 0 ? 4 : list->capacity * 2;
+        list->neighbors = (int*)realloc(list->neighbors, list->capacity * sizeof(int));
+    }
+    list->neighbors[list->size++] = val;
+}
+
+int** constructGridLayout(int n, int** edges, int edgesSize, int* edgesColSize, int* returnSize, int** returnColumnSizes) {
+    AdjList* adj = (AdjList*)calloc(n, sizeof(AdjList));
+    int* degrees = (int*)calloc(n, sizeof(int));
+    
+    for (int i = 0; i < edgesSize; i++) {
+        int u = edges[i][0];
+        int v = edges[i][1];
+        addNeighbor(&adj[u], v);
+        addNeighbor(&adj[v], u);
+        degrees[u]++;
+        degrees[v]++;
+    }
+
+    int start_deg1 = -1;
+    for (int i = 0; i < n; i++) {
+        if (degrees[i] == 1) {
+            start_deg1 = i;
+            break;
+        }
+    }
+
+    bool* visited = (bool*)calloc(n, sizeof(bool));
+    if (start_deg1 != -1) {
+        int** grid = (int**)malloc(1 * sizeof(int*));
+        grid[0] = (int*)malloc(n * sizeof(int));
+        
+        int curr = start_deg1;
+        for (int i = 0; i < n; i++) {
+            grid[0][i] = curr;
+            visited[curr] = true;
+            for (int j = 0; j < adj[curr].size; j++) {
+                int nxt = adj[curr].neighbors[j];
+                if (!visited[nxt]) {
+                    curr = nxt;
+                    break;
+                }
+            }
+        }
+
+        *returnSize = 1;
+        *returnColumnSizes = (int*)malloc(sizeof(int));
+        (*returnColumnSizes)[0] = n;
+
+        for(int i = 0; i < n; i++) {
+            if(adj[i].neighbors) free(adj[i].neighbors);
+        }
+        free(adj); free(degrees); free(visited);
+        return grid;
+    }
+
+    int start = -1;
+    for (int i = 0; i < n; i++) {
+        if (degrees[i] == 2) {
+            start = i;
+            break;
+        }
+    }
+
+    int* first_row = (int*)malloc(n * sizeof(int));
+    int row_len = 0;
+    
+    int curr = start;
+    first_row[row_len++] = curr;
+    visited[curr] = true;
+    
+    int next_node = adj[curr].neighbors[0];
+    curr = next_node;
+    first_row[row_len++] = curr;
+    visited[curr] = true;
+
+    while (degrees[curr] != 2) {
+        for (int j = 0; j < adj[curr].size; j++) {
+            int nxt = adj[curr].neighbors[j];
+            if (!visited[nxt] && degrees[nxt] <= 3) {
+                curr = nxt;
+                first_row[row_len++] = curr;
+                visited[curr] = true;
+                break;
+            }
+        }
+    }
+
+    int R = row_len;        // Number of Columns
+    int C = n / row_len;    // Number of Rows
+
+    int** grid = (int**)malloc(C * sizeof(int*));
+    *returnColumnSizes = (int*)malloc(C * sizeof(int));
+    for (int i = 0; i < C; i++) {
+        grid[i] = (int*)malloc(R * sizeof(int));
+        (*returnColumnSizes)[i] = R;
+    }
+    *returnSize = C;
+
+    for (int j = 0; j < R; j++) {
+        grid[0][j] = first_row[j];
+    }
+    free(first_row);
+    for (int r = 1; r < C; r++) {
+        for (int c = 0; c < R; c++) {
+            int above = grid[r - 1][c];
+            int candidate = -1;
+
+            for (int j = 0; j < adj[above].size; j++) {
+                int nxt = adj[above].neighbors[j];
+                if (!visited[nxt]) {
+                    if (c == 0) {
+                        candidate = nxt;
+                        break;
+                    } else {
+                        int left = grid[r][c - 1];
+                        bool is_left_neighbor = false;
+                        for (int k = 0; k < adj[left].size; k++) {
+                            if (adj[left].neighbors[k] == nxt) {
+                                is_left_neighbor = true;
+                                break;
+                            }
+                        }
+                        if (is_left_neighbor) {
+                            candidate = nxt;
+                            break;
+                        }
+                    }
+                }
+            }
+            grid[r][c] = candidate;
+            visited[candidate] = true;
+        }
+    }
+
+    for (int i = 0; i < n; i++) {
+        if (adj[i].neighbors) free(adj[i].neighbors);
+    }
+    free(adj);
+    free(degrees);
+    free(visited);
+
+    return grid;
+}
