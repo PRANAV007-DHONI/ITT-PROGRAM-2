@@ -1,0 +1,79 @@
+#include <stdlib.h>
+
+// Structure to pair each value with its original 0-indexed position
+typedef struct {
+    int value;
+    int index;
+} Element;
+
+// Comparator to sort elements by their value in ascending order
+int compare(const void* a, const void* b) {
+    int valA = ((Element*)a)->value;
+    int valB = ((Element*)b)->value;
+    return (valA > valB) - (valA < valB);
+}
+
+// Fenwick Tree (Binary Indexed Tree) helper functions
+void update(int* bit, int n, int idx, int val) {
+    for (; idx <= n; idx += idx & -idx) {
+        bit[idx] += val;
+    }
+}
+
+int query(int* bit, int idx) {
+    int sum = 0;
+    for (; idx > 0; idx -= idx & -idx) {
+        sum += bit[idx];
+    }
+    return sum;
+}
+
+// Function to calculate the number of elements remaining in a 1-based index range [left, right]
+int getElementCount(int* bit, int left, int right) {
+    if (left > right) return 0;
+    return query(bit, right) - query(bit, left - 1);
+}
+
+long long countOperationsToEmptyArray(int* nums, int numsSize) {
+    Element* elements = (Element*)malloc(numsSize * sizeof(Element));
+    for (int i = 0; i < numsSize; i++) {
+        elements[i].value = nums[i];
+        elements[i].index = i;
+    }
+
+    // Sort elements to know the sequence of deletions (smallest to largest)
+    qsort(elements, numsSize, sizeof(Element), compare);
+
+    // Initialize the Fenwick tree to track active (unremoved) elements. 
+    // 1 indicates the element is still in the array.
+    int* bit = (int*)calloc(numsSize + 1, sizeof(int));
+    for (int i = 1; i <= numsSize; i++) {
+        update(bit, numsSize, i, 1);
+    }
+
+    long long totalOperations = 0;
+    int currentPos = 0; // Tracks the current 0-indexed position of our pointer
+
+    for (int i = 0; i < numsSize; i++) {
+        int targetPos = elements[i].index;
+
+        if (targetPos >= currentPos) {
+            // Target is ahead: count active elements from currentPos to targetPos
+            totalOperations += getElementCount(bit, currentPos + 1, targetPos + 1);
+        } else {
+            // Target wrapped around: count active elements to the end, then from the start to targetPos
+            totalOperations += getElementCount(bit, currentPos + 1, numsSize);
+            totalOperations += getElementCount(bit, 1, targetPos + 1);
+        }
+
+        // Remove the element from the Fenwick tree tracker
+        update(bit, numsSize, targetPos + 1, -1);
+        
+        // Advance pointer to the next position immediately after the removed element
+        currentPos = targetPos;
+    }
+
+    free(elements);
+    free(bit);
+    return totalOperations;
+}
